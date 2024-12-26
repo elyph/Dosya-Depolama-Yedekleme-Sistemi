@@ -131,10 +131,10 @@ class MainApp:
         """Yönetici panelini açar."""
         admin_window = tk.Toplevel(self.root)
         admin_window.title("Yönetici Paneli")
-        admin_window.geometry("600x400")
+        admin_window.geometry("600x500")
         admin_window.configure(bg='lightblue')
 
-        AdminUserGUI(admin_window, username)
+        AdminUserGUI(admin_window, username, self.cursor)
 
 if __name__ == "__main__":
     root = tk.Tk()

@@ -1,7 +1,9 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog, filedialog
+from tkinter import messagebox, simpledialog, filedialog, ttk
 import sqlite3
 import hashlib
+import shutil
+import os
 
 class IndividualUserGUI:
     def __init__(self, root, username, cursor, conn):
@@ -10,7 +12,7 @@ class IndividualUserGUI:
         self.cursor = cursor
         self.conn = conn  # Veritabanı bağlantısı
         self.root.title(f"{self.username} - Bireysel Kullanıcı Paneli")
-        self.root.geometry("600x500")
+        self.root.geometry("600x600")
         self.root.configure(bg='lightblue')
         self.lbl_welcome = tk.Label(self.root, text=f"Hoş Geldiniz, {self.username}!", bg='lightblue', font=('Arial', 16))
         self.lbl_welcome.pack(pady=10)
@@ -32,6 +34,13 @@ class IndividualUserGUI:
         btn_check_status = tk.Button(self.root, text="Parola Değişikliği Durumu", command=self.check_request_status, bg='orange', fg='black', width=30)
         btn_check_status.pack(pady=10)
 
+        #Dosya yükleme butonu
+        btn_upload = tk.Button(self.root, text="Dosya Yükle", command=self.upload_file, bg='blue', fg='white', width=30)
+        btn_upload.pack(pady=10)
+
+        #Kişisel dosyaları görüntükeme butonu
+        tk.Button(self.root, text="Kişisel Dosyalarım", command=self.view_personal_files, bg='blue', fg='white', width=30).pack(pady=10)
+
         # Takım üyesi belirleme butonu
         btn_add_team_member = tk.Button(self.root, text="Takım Oluştur", command=self.create_team, bg='green', fg='white', width=30)
         btn_add_team_member.pack(pady=10)
@@ -40,13 +49,14 @@ class IndividualUserGUI:
         btn_view_user_teams = tk.Button(self.root, text="Takımlarım", command=self.view_user_teams, bg='cyan', fg='black', width=30)
         btn_view_user_teams.pack(pady=10)
 
-        # Dosya yükleme butonu
-        btn_upload_file = tk.Button(self.root, text="Dosya Yükle", command=self.upload_file, bg='blue', fg='white', width=30)
-        btn_upload_file.pack(pady=10)
-
         # Dosya paylaşma butonu
         btn_share_file = tk.Button(self.root, text="Dosya Paylaş", command=self.share_file, bg='purple', fg='white', width=30)
         btn_share_file.pack(pady=10)
+
+        # Dosya görüntüleme butonu
+        btn_view_shared_files = tk.Button(self.root, text="Dosyaları Görüntüle", command=self.view_shared_files, bg='pink', fg='white', width=30)
+        btn_view_shared_files.pack(pady=10)
+
 
     def change_username(self):
         new_username = simpledialog.askstring("Yeni Kullanıcı Adı", "Yeni kullanıcı adınızı girin:")
@@ -92,15 +102,82 @@ class IndividualUserGUI:
         else:
             self.status_label.config(text="Bilinmeyen bir durum oluştu.", fg='gray')
 
-
-    def upload_file(self):
-        file = filedialog.askopenfilename(title="Bir dosya seçin")
-        if file:
-            messagebox.showinfo("Dosya Yüklendi", f"{file} başarıyla yüklendi!")
-
-
     def send_notification(self, username, message):
         messagebox.showinfo("Bildirim", f"{username}: {message}")
+
+    def upload_file(self):
+        # Kullanıcıdan dosya seçmesini iste
+        file_path = filedialog.askopenfilename(
+            title="Dosya Seçin",
+            filetypes=[("Tüm Dosyalar", "*.*")]
+        )
+
+        if not file_path:
+            messagebox.showwarning("Uyarı", "Dosya seçilmedi.")
+            return
+
+        # Yükleme dizini (örneğin: "uploads/")
+        upload_dir = os.path.join(os.getcwd(), "data", "uploads")
+        os.makedirs(upload_dir, exist_ok=True)  # Dizini oluştur
+
+        # Dosyanın yeni kaydedileceği yol
+        file_name = os.path.basename(file_path)
+        save_path = os.path.join(upload_dir, file_name)
+
+        try:
+            # Dosyayı yükleme dizinine kopyala
+            shutil.copy(file_path, save_path)
+
+            # Veritabanına dosya bilgilerini kaydet
+            self.cursor.execute("""
+                INSERT INTO user_files (username, file_name, file_path, upload_date)
+                VALUES (?, ?, ?, datetime('now'))
+            """, (self.username, file_name, save_path))
+            self.conn.commit()
+
+            messagebox.showinfo("Başarılı", f"Dosya başarıyla yüklendi: {file_name}")
+        except Exception as e:
+            messagebox.showerror("Hata", f"Dosya yüklenirken bir hata oluştu: {e}")
+
+    def view_personal_files(self):
+        # Kullanıcıya ait dosyaları veritabanından al
+        self.cursor.execute("SELECT file_name, file_path, upload_date FROM user_files WHERE username = ?", (self.username,))
+        files = self.cursor.fetchall()
+
+        if not files:
+            messagebox.showinfo("Bilgi", "Henüz yüklenmiş bir dosyanız bulunmamaktadır.")
+            return
+
+        # Yeni bir pencere oluştur
+        personal_files_window = tk.Toplevel(self.root)
+        personal_files_window.title("Kişisel Dosyalarım")
+
+        tk.Label(personal_files_window, text="Kişisel Dosyalarım:", font=("Arial", 14)).pack(pady=10)
+
+        files_listbox = tk.Listbox(personal_files_window)
+        files_listbox.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
+
+        # Dosyaları listeye ekle
+        for file in files:
+            files_listbox.insert(tk.END, f"Dosya: {file[0]} | Yükleme Tarihi: {file[2]}")
+
+        # Dosya indir butonu
+        def download_selected_file():
+            selected_index = files_listbox.curselection()
+            if not selected_index:
+                messagebox.showwarning("Uyarı", "Lütfen bir dosya seçin.")
+                return
+            selected_file = files[selected_index[0]]
+            messagebox.showinfo("İndir", f"{selected_file[0]} dosyası şu dizine kaydedildi: {selected_file[1]}")
+
+        tk.Button(
+            personal_files_window, text="Seçili Dosyayı İndir", command=download_selected_file, bg='green', fg='white'
+        ).pack(pady=5)
+
+        # Kapat butonu
+        tk.Button(
+            personal_files_window, text="Kapat", command=personal_files_window.destroy, bg='red', fg='white'
+        ).pack(pady=5)
 
     def create_team(self):
         team_name = simpledialog.askstring("Takım Oluştur", "Takım adını girin:")
@@ -293,19 +370,89 @@ class IndividualUserGUI:
         team_name = simpledialog.askstring("Dosya Paylaş", "Dosyayı paylaşmak istediğiniz takım adını girin:")
         if not team_name:
             return
-        
+
+        # Takım üyelerinin listesini al
         self.cursor.execute("SELECT member_username FROM team_members WHERE team_name = ?", (team_name,))
         members = self.cursor.fetchall()
-        
+
         if not members:
             messagebox.showerror("Hata", f"{team_name} takımına ait üye bulunamadı.")
             return
 
+        # Kullanıcı dosya seçer
         file_path = filedialog.askopenfilename(title="Bir dosya seçin")
         if file_path:
-            # Dosya paylaşım işlemleri (gerçekleştirilecek işlemler eklenebilir)
+            file_name = file_path.split("/")[-1]  # Dosyanın ismini al
+
+            # Dosya paylaşımını veritabanına kaydet
+            shared_by = self.username
+            for member in members:
+                shared_with = member[0]  # Paylaşılan kullanıcı
+                self.cursor.execute("INSERT INTO file_shares (team_name, file_name, file_path, shared_by, shared_with) VALUES (?, ?, ?, ?, ?)",
+                                    (team_name, file_name, file_path, shared_by, shared_with))
+            
+            self.conn.commit()
+
+            # Paylaşım bilgisi kullanıcıya gösterilir
             member_list = ", ".join([member[0] for member in members])
-            messagebox.showinfo("Başarılı", f"{team_name} takımına ({member_list}) {file_path} başarıyla paylaşıldı!")
+            messagebox.showinfo("Başarılı", f"{team_name} takımına ({member_list}) {file_name} başarıyla paylaşıldı!")
+
+    def view_shared_files(self):
+        # Kullanıcı hem paylaşılan kişi hem de paylaşan olabilir
+        self.cursor.execute("""
+            SELECT * FROM file_shares 
+            WHERE shared_with = ? OR shared_by = ?
+        """, (self.username, self.username))
+        files = self.cursor.fetchall()
+
+        if not files:
+            messagebox.showinfo("Bilgi", "Henüz paylaşılan dosya bulunmamaktadır.")
+            return
+
+        files_window = tk.Toplevel(self.root)
+        files_window.title("Paylaşılan Dosyalar")
+
+        tk.Label(files_window, text="Paylaşılan Dosyalar:", font=("Arial", 14)).pack(pady=10)
+
+        files_listbox = tk.Listbox(files_window, selectmode=tk.SINGLE)
+        files_listbox.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
+
+        for file in files:
+            files_listbox.insert(
+                tk.END, 
+                f"Dosya: {file[2]}, Paylaşan: {file[4]}, Takım: {file[1]}, Paylaşılan Kişi: {file[5]}"
+            )
+
+        def download_file():
+            selected_index = files_listbox.curselection()
+            if not selected_index:
+                messagebox.showwarning("Uyarı", "Lütfen bir dosya seçin.")
+                return
+
+            selected_file = files[selected_index[0]]
+            file_path = selected_file[3]  # Dosyanın orijinal yolu
+
+            # Kullanıcıdan kaydetme konumunu seçmesini iste
+            save_path = filedialog.asksaveasfilename(
+                initialfile=selected_file[2],  # Varsayılan dosya adı
+                title="Dosyayı Kaydet",
+                filetypes=[("Tüm Dosyalar", "*.*")]
+            )
+
+            if save_path:
+                try:
+                    shutil.copy(file_path, save_path)
+                    messagebox.showinfo("Başarılı", f"Dosya başarıyla indirildi: {save_path}")
+                except Exception as e:
+                    messagebox.showerror("Hata", f"Dosya indirilirken bir hata oluştu: {e}")
+
+        btn_download = tk.Button(files_window, text="İndir", command=download_file, bg='green', fg='white')
+        btn_download.pack(pady=5)
+
+        btn_close_window = tk.Button(files_window, text="Kapat", command=files_window.destroy, bg='red', fg='white')
+        btn_close_window.pack(pady=5)
+
+
 
     def logout(self):
         self.root.destroy()

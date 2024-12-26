@@ -332,9 +332,6 @@ class IndividualUserGUI:
         btn_close_window = tk.Button(users_window, text="Kapat", command=users_window.destroy, bg='red', fg='white')
         btn_close_window.pack(pady=5)
 
-
-
-
     def view_team_members(self, team_name):
         if not team_name:
             messagebox.showerror("Hata", "Bir takım seçmelisiniz.")
@@ -363,9 +360,6 @@ class IndividualUserGUI:
         for member in members:
             members_listbox.insert(tk.END, member[0])
 
-
-
-
     def share_file(self):
         team_name = simpledialog.askstring("Dosya Paylaş", "Dosyayı paylaşmak istediğiniz takım adını girin:")
         if not team_name:
@@ -384,12 +378,17 @@ class IndividualUserGUI:
         if file_path:
             file_name = file_path.split("/")[-1]  # Dosyanın ismini al
 
+            # Düzenlenebilirlik durumu
+            editable = messagebox.askyesno("Düzenlenebilir mi?", f"{file_name} dosyasını düzenlenebilir yapacak mısınız?")
+
             # Dosya paylaşımını veritabanına kaydet
             shared_by = self.username
             for member in members:
                 shared_with = member[0]  # Paylaşılan kullanıcı
-                self.cursor.execute("INSERT INTO file_shares (team_name, file_name, file_path, shared_by, shared_with) VALUES (?, ?, ?, ?, ?)",
-                                    (team_name, file_name, file_path, shared_by, shared_with))
+                self.cursor.execute("""
+                    INSERT INTO file_shares (team_name, file_name, file_path, shared_by, shared_with, editable)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (team_name, file_name, file_path, shared_by, shared_with, 1 if editable else 0))
             
             self.conn.commit()
 
@@ -400,28 +399,27 @@ class IndividualUserGUI:
     def view_shared_files(self):
         # Kullanıcı hem paylaşılan kişi hem de paylaşan olabilir
         self.cursor.execute("""
-            SELECT * FROM file_shares 
+            SELECT file_name, file_path, shared_by, editable 
+            FROM file_shares 
             WHERE shared_with = ? OR shared_by = ?
         """, (self.username, self.username))
-        files = self.cursor.fetchall()
+        shared_files = self.cursor.fetchall()
 
-        if not files:
-            messagebox.showinfo("Bilgi", "Henüz paylaşılan dosya bulunmamaktadır.")
+        if not shared_files:
+            messagebox.showinfo("Bilgi", "Henüz sizinle paylaşılan bir dosya bulunmamaktadır.")
             return
 
-        files_window = tk.Toplevel(self.root)
-        files_window.title("Paylaşılan Dosyalar")
+        shared_files_window = tk.Toplevel(self.root)
+        shared_files_window.title("Paylaşılan Dosyalar")
 
-        tk.Label(files_window, text="Paylaşılan Dosyalar:", font=("Arial", 14)).pack(pady=10)
+        tk.Label(shared_files_window, text="Paylaşılan Dosyalar:", font=("Arial", 14)).pack(pady=10)
 
-        files_listbox = tk.Listbox(files_window, selectmode=tk.SINGLE)
+        files_listbox = tk.Listbox(shared_files_window)
         files_listbox.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
 
-        for file in files:
-            files_listbox.insert(
-                tk.END, 
-                f"Dosya: {file[2]}, Paylaşan: {file[4]}, Takım: {file[1]}, Paylaşılan Kişi: {file[5]}"
-            )
+        for file in shared_files:
+            editable_status = " (Düzenlenebilir)" if file[3] else ""
+            files_listbox.insert(tk.END, f"Dosya: {file[0]} | Paylaşan: {file[2]}{editable_status}")
 
         def download_file():
             selected_index = files_listbox.curselection()
@@ -429,12 +427,12 @@ class IndividualUserGUI:
                 messagebox.showwarning("Uyarı", "Lütfen bir dosya seçin.")
                 return
 
-            selected_file = files[selected_index[0]]
-            file_path = selected_file[3]  # Dosyanın orijinal yolu
+            selected_file = shared_files[selected_index[0]]
+            file_path = selected_file[1]  # Dosyanın orijinal yolu
 
             # Kullanıcıdan kaydetme konumunu seçmesini iste
             save_path = filedialog.asksaveasfilename(
-                initialfile=selected_file[2],  # Varsayılan dosya adı
+                initialfile=selected_file[0],  # Varsayılan dosya adı
                 title="Dosyayı Kaydet",
                 filetypes=[("Tüm Dosyalar", "*.*")]
             )
@@ -446,13 +444,56 @@ class IndividualUserGUI:
                 except Exception as e:
                     messagebox.showerror("Hata", f"Dosya indirilirken bir hata oluştu: {e}")
 
-        btn_download = tk.Button(files_window, text="İndir", command=download_file, bg='green', fg='white')
+        btn_download = tk.Button(shared_files_window, text="İndir", command=download_file, bg='green', fg='white')
         btn_download.pack(pady=5)
 
-        btn_close_window = tk.Button(files_window, text="Kapat", command=files_window.destroy, bg='red', fg='white')
+        btn_close_window = tk.Button(shared_files_window, text="Kapat", command=shared_files_window.destroy, bg='red', fg='white')
         btn_close_window.pack(pady=5)
 
+        def edit_selected_file():
+            selected_index = files_listbox.curselection()
+            if not selected_index:
+                messagebox.showwarning("Uyarı", "Lütfen bir dosya seçin.")
+                return
 
+            selected_file = shared_files[selected_index[0]]
+            file_name, file_path, shared_by, editable = selected_file
+
+            if not editable:
+                messagebox.showerror("Yetki Hatası", f"{file_name} dosyasını düzenleme yetkiniz yok.")
+                return
+
+            # Dosyayı düzenleme penceresi aç
+            edit_window = tk.Toplevel(self.root)
+            edit_window.title(f"Dosyayı Düzenle: {file_name}")
+
+            tk.Label(edit_window, text=f"{file_name} içeriğini düzenleyin:").pack(pady=10)
+
+            # Dosya içeriğini okuma ve düzenlenebilir alana yükleme
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            text_area = tk.Text(edit_window, wrap=tk.WORD)
+            text_area.insert(tk.END, content)
+            text_area.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+
+            def save_changes():
+                new_content = text_area.get("1.0", tk.END).strip()
+
+                try:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(new_content)
+                    messagebox.showinfo("Başarılı", f"{file_name} dosyası başarıyla güncellendi.")
+                    edit_window.destroy()
+                except Exception as e:
+                    messagebox.showerror("Hata", f"Dosya kaydedilirken bir hata oluştu: {e}")
+
+            tk.Button(edit_window, text="Değişiklikleri Kaydet", command=save_changes, bg='green', fg='white').pack(pady=10)
+            tk.Button(edit_window, text="Kapat", command=edit_window.destroy, bg='red', fg='white').pack(pady=5)
+
+        # Düzenleme butonu
+        tk.Button(shared_files_window, text="Seçili Dosyayı Düzenle", command=edit_selected_file, bg='yellow', fg='black').pack(pady=10)
+        tk.Button(shared_files_window, text="Kapat", command=shared_files_window.destroy, bg='red', fg='white').pack(pady=5)
 
     def logout(self):
         self.root.destroy()

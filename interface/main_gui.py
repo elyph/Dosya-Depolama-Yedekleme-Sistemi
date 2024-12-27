@@ -37,6 +37,9 @@ class MainApp:
         # Kayıt Ol Butonu
         tk.Button(self.root, text="Kayıt Ol", command=self.register, bg='green', fg='white').pack(pady=10)
 
+        # Çıkış Yap Butonu (Uygulamayı kapatır)
+        tk.Button(self.root, text="Çıkış Yap", command=self.exit_application, bg='red', fg='white').pack(pady=10)
+
     def hash_password(self, password):
         """Parolayı SHA256 ile hashler."""
         return hashlib.sha256(password.encode()).hexdigest()
@@ -59,8 +62,7 @@ class MainApp:
                 self.admin_dashboard(username)
             else:
                 self.user_dashboard(username)
-        else:
-            messagebox.showerror("Hata", "Geçersiz kullanıcı adı veya parola.")
+            self.root.withdraw()  # Giriş penceresini gizle
 
     def register(self):
         """Kayıt ekranını açar."""
@@ -135,6 +137,11 @@ class MainApp:
         admin_window.configure(bg='lightblue')
 
         AdminUserGUI(admin_window, username, self.cursor)
+
+    def exit_application(self):
+        """Uygulamayı kapatır."""
+        if messagebox.askyesno("Çıkış", "Uygulamadan çıkmak istediğinizden emin misiniz?"):
+            self.root.quit()  # Uygulamayı sonlandırır
 
 if __name__ == "__main__":
     root = tk.Tk()

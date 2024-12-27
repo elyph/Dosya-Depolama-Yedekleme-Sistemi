@@ -12,7 +12,8 @@ class AdminUserGUI:
 
         # Veritabanı Bağlantısı
         self.cursor = cursor
-        
+        self.username = username  # Admin kullanıcı adı
+
         # Hoşgeldiniz mesajı
         self.lbl_welcome = tk.Label(self.root, text=f"Hoşgeldiniz, {username}!", bg='lightblue', font=('Arial', 14, 'bold'))
         self.lbl_welcome.pack(pady=20)
@@ -41,13 +42,59 @@ class AdminUserGUI:
         btn_access_documents = tk.Button(self.root, text="Dokümanlara Erişim", command=self.access_documents, bg='red', fg='white')
         btn_access_documents.pack(pady=10)
 
-    def manage_users(self):
-        # Kullanıcı profillerini listeleme
-        self.cursor.execute("SELECT * FROM users")
-        users = self.cursor.fetchall()
-        users_list = "\n".join([f"Username: {user[0]}, Role: {user[3]}" for user in users])
+        #Çıkış butonu
+        tk.Button(self.root, text="Çıkış Yap", command=self.logout, bg='red', fg='white').pack(pady=10)
 
-        messagebox.showinfo("Kullanıcı Profilleri", f"Kullanıcı Profilleri:\n{users_list}")
+    def manage_users(self):
+        # Kullanıcı profillerini listeleme penceresi
+        manage_users_window = tk.Toplevel(self.root)
+        manage_users_window.title("Kullanıcı Yönetimi")
+        manage_users_window.geometry("600x400")
+        manage_users_window.configure(bg='lightblue')
+
+        tk.Label(manage_users_window, text="Kullanıcı Profilleri:", bg='lightblue', font=('Arial', 12)).pack(pady=10)
+        listbox = tk.Listbox(manage_users_window, width=60, height=15)
+        listbox.pack(pady=10)
+
+        def refresh_list():
+            """Listeyi yenilemek için kullanıcıları yeniden yükler."""
+            listbox.delete(0, tk.END)  # Mevcut listeyi temizle
+            self.cursor.execute("SELECT id, username, role FROM users")
+            users = self.cursor.fetchall()
+            for user in users:
+                listbox.insert(tk.END, f"ID: {user[0]}, Username: {user[1]}, Role: {user[2]}")
+            return users
+
+        # İlk yükleme
+        users = refresh_list()
+
+        def change_role():
+            # Seçili kullanıcı bilgilerini al
+            selection = listbox.curselection()
+            if selection:
+                user_id = users[selection[0]][0]
+                username = users[selection[0]][1]
+                current_role = users[selection[0]][2]
+
+                # Yeni rolü sor
+                new_role = simpledialog.askstring("Rol Değiştir", f"{username} için yeni rolü girin (mevcut rol: {current_role}):")
+                if new_role and new_role != current_role:
+                    self.cursor.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
+                    self.cursor.connection.commit()
+                    messagebox.showinfo("Başarılı", f"{username} kullanıcısının rolü '{new_role}' olarak güncellendi.")
+                    refresh_list()  # Listeyi yenile
+                else:
+                    messagebox.showerror("Hata", "Geçersiz giriş veya aynı rol seçildi.")
+            else:
+                messagebox.showerror("Hata", "Lütfen bir kullanıcı seçin.")
+
+        # Rol değiştirme butonu
+        tk.Button(manage_users_window, text="Seçili Kullanıcının Rolünü Değiştir", command=change_role, bg='green', fg='white').pack(pady=10)
+
+        # Yenile butonu
+        tk.Button(manage_users_window, text="Yenile", command=refresh_list, bg='blue', fg='white').pack(pady=10)
+
+
 
     def approve_password_change(self):
         approval_window = tk.Toplevel(self.root)
@@ -91,19 +138,42 @@ class AdminUserGUI:
 
         tk.Button(approval_window, text="Seçili Talebi Onayla", command=approve_request, bg='green', fg='white').pack(pady=10)
 
-
-
     def manage_storage(self):
         # Depolama limitlerini yönetme
-        username = simpledialog.askstring("Depolama Limiti", "Depolama limitini değiştireceğiniz kullanıcının adını girin:")
-        new_limit = simpledialog.askinteger("Yeni Depolama Limiti", "Yeni depolama limitini girin (GB):")
-        
-        if username and new_limit:
-            self.cursor.execute("UPDATE users SET storage_limit = ? WHERE username = ?", (new_limit, username))
-            self.cursor.connection.commit()  # Doğru commit kullanımı
-            messagebox.showinfo("Başarılı", f"{username} için depolama limiti başarıyla {new_limit} GB olarak güncellendi.")
-        else:
-            messagebox.showerror("Hata", "Geçersiz girişler.")
+        storage_window = tk.Toplevel(self.root)
+        storage_window.title("Depolama Limiti Yönetimi")
+        storage_window.geometry("600x400")
+        storage_window.configure(bg='lightblue')
+
+        tk.Label(storage_window, text="Depolama Limiti Yönetimi", bg='lightblue', font=('Arial', 14, 'bold')).pack(pady=20)
+
+        self.cursor.execute("SELECT username, storage_limit FROM users")
+        users = self.cursor.fetchall()
+
+        # Kullanıcıları listeleme ve limitleri görüntüleme
+        listbox = tk.Listbox(storage_window, width=50, height=10)
+        listbox.pack(pady=10)
+
+        for user in users:
+            listbox.insert(tk.END, f"Username: {user[0]}, Depolama Limiti: {user[1]} GB")
+
+        # Depolama limiti güncelleme butonu
+        def update_storage_limit():
+            selection = listbox.curselection()
+            if selection:
+                selected_user = users[selection[0]][0]
+                new_limit = simpledialog.askinteger("Yeni Depolama Limiti", f"{selected_user} için yeni depolama limitini girin (GB):")
+                
+                if new_limit:
+                    self.cursor.execute("UPDATE users SET storage_limit = ? WHERE username = ?", (new_limit, selected_user))
+                    self.cursor.connection.commit()
+                    messagebox.showinfo("Başarılı", f"{selected_user} için depolama limiti başarıyla {new_limit} GB olarak güncellendi.")
+                else:
+                    messagebox.showerror("Hata", "Geçersiz giriş.")
+            else:
+                messagebox.showerror("Hata", "Lütfen bir kullanıcı seçin.")
+
+        tk.Button(storage_window, text="Seçili Kullanıcıyı Güncelle", command=update_storage_limit, bg='green', fg='white').pack(pady=10)
 
     def view_logs(self):
         # Kullanıcı loglarını görüntüleme
@@ -125,3 +195,16 @@ class AdminUserGUI:
             messagebox.showinfo("Dokümanlar", f"{username} kullanıcısının dokümanları:\n{docs_list}")
         else:
             messagebox.showerror("Hata", f"{username} kullanıcısının dokümanı bulunamadı.")
+
+    def logout(self):
+        """Kullanıcı çıkış yaparsa, giriş ekranına döner."""
+        if messagebox.askyesno("Çıkış", "Çıkış yapmak istediğinizden emin misiniz?"):
+            self.root.destroy()  # Kullanıcı panelini kapat
+            self.return_to_main_screen()  # Giriş ekranına dön
+
+    def return_to_main_screen(self):
+        """Ana ekranı (giriş ekranı) yeniden başlatır."""
+        from main_gui import MainApp  # Ana ekran sınıfını içe aktar
+        main_root = tk.Tk()
+        app = MainApp(main_root)
+        main_root.mainloop()

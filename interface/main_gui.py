@@ -1,21 +1,27 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 import sqlite3
 import hashlib
-from individual_user_gui import IndividualUserGUI
-from admin_user_gui import AdminUserGUI
 import sys
 import os
+from individual_user_gui import IndividualUserGUI
+from admin_user_gui import AdminUserGUI
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'modules')))
 from backup_sync import FileBackupApp
+from log_manager import LogWatcher  # modules/log_manager.py
+from behavior_analyzer import UserBehaviorWatcher  # modules/behavior_analyzer.py
+from log_manager import LogWatcher
 
+log_watcher = LogWatcher()
 
 class MainApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Dosya Depolama/Yedekleme Sistemi")
         self.root.geometry("600x400")
-        self.root.configure(bg='lightblue')  # Arka plan rengi
+        self.root.configure(bg='lightblue')  # Arka plan rengi 
+
+        self.failed_attempts = 0  # Başarısız giriş sayısı
 
         # Veritabanı Bağlantısı
         self.conn = sqlite3.connect('file_backup_system.db')
@@ -27,18 +33,44 @@ class MainApp:
         # Yedekleme ve Senkronizasyonu başlatıyoruz
         self.start_backup_sync()
 
+        # Log İzleme ve Davranış İzleme başlatıyoruz
+        self.start_log_and_behavior_monitoring()
+
     def start_backup_sync(self):
         """Yedekleme ve senkronizasyon işlemini başlatır."""
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         source_dir = os.path.join(project_root, "modules/source")
         backup_dir = os.path.join(project_root, "modules/backup")
 
-        # Yedekleme işlemini GUI başlangıcında başlat
+        # Yedekleme işlemi başlatılıyor
         file_sync = FileBackupApp(self.root, source_dir, backup_dir)
+        
+        # Yedekleme işlemi için log kaydediliyor
+        log_watcher = LogWatcher()
+        log_watcher.log_backup('BACKUP001', 'SUCCESS', source_dir, 150)  # Yedekleme başarılı oldu (150MB)
 
         # Kullanıcıya bildirim mesajı
-        print("Yedekleme ve Senkronizasyon Başarıyla Başlatıldı!")
+        messagebox.showinfo("Yedekleme Tamamlandı", "Yedekleme işlemi başarıyla tamamlandı!")
 
+    def start_log_and_behavior_monitoring(self):
+        """Log İzleme ve Kullanıcı Davranışı İzlemeyi başlatır."""
+        # Log İzleyicisini başlat
+        log_watcher = LogWatcher()
+        log_watcher.log('log_start', 'INFO', 'START', 'N/A', 0)  # Log başlatılıyor
+        log_watcher.start()
+
+        # Kullanıcı Davranışı İzleyicisini başlat
+        behavior_watcher = UserBehaviorWatcher(log_watcher, self.show_alert)
+        behavior_watcher.start()
+
+    def show_alert(self, message):
+        """Tkinter GUI üzerinde uyarı göstermek için fonksiyon."""
+        alert_window = tk.Toplevel(self.root)
+        alert_window.title("Uyarı")
+        label = tk.Label(alert_window, text=message)
+        label.pack(padx=20, pady=20)
+        button = tk.Button(alert_window, text="Tamam", command=alert_window.destroy)
+        button.pack(pady=10)
 
     def create_login_screen(self):
         """Kullanıcı girişi için ekranı oluşturur."""
@@ -79,11 +111,33 @@ class MainApp:
 
         if user and self.hash_password(password) == user[2]:  # user[2] = stored password hash
             messagebox.showinfo("Başarılı", "Giriş Başarılı!")
+
+            # Profil girişi başarılı olduğunda log kaydını yapıyoruz
+            log_watcher = LogWatcher()  # LogWatcher sınıfından bir nesne oluşturuyoruz
+            log_watcher.log_profile_login(username)  # Profil girişini logluyoruz
+            
             if user[3] == "admin":  # user[3] = role
                 self.admin_dashboard(username)
             else:
                 self.user_dashboard(username)
             self.root.withdraw()  # Giriş penceresini gizle
+
+        else:
+            # Başarısız giriş işlemi
+            self.failed_attempts += 1
+            if self.failed_attempts >= 3:  # 3 başarısız giriş tespiti
+                self.detect_anomaly(username)
+
+            messagebox.showerror("Hata", "Kullanıcı adı veya parola yanlış.")
+
+    def detect_anomaly(self, username):
+        """Kullanıcının davranışını izler ve anormal bir durum tespit ederse log kaydeder."""
+        log_watcher = LogWatcher()
+        log_watcher.log_anomaly('ANOMALY001', 'ALERT', username, 'Three failed login attempts in a short period.')
+
+        # Kullanıcıya bildirim
+        messagebox.showwarning("Anomali Tespit Edildi", f"Anormal durum tespit edildi: {username}.")
+
 
     def register(self):
         """Kayıt ekranını açar."""
@@ -149,7 +203,6 @@ class MainApp:
         cursor = conn.cursor()  # Cursor da burada oluşturuluyor
         IndividualUserGUI(user_window, username, cursor, conn)  # Veritabanı bağlantısını ve cursor'u geçiriyoruz
 
-
     def admin_dashboard(self, username):
         """Yönetici panelini açar."""
         admin_window = tk.Toplevel(self.root)
@@ -161,8 +214,9 @@ class MainApp:
 
     def exit_application(self):
         """Uygulamayı kapatır."""
-        if messagebox.askyesno("Çıkış", "Uygulamadan çıkmak istediğinizden emin misiniz?"):
-            self.root.quit()  # Uygulamayı sonlandırır
+        if messagebox.askyesno("Çıkış", "Uygulamadan çıkmak istiyor musunuz?"):
+            self.conn.close()
+            self.root.quit()
 
 if __name__ == "__main__":
     root = tk.Tk()

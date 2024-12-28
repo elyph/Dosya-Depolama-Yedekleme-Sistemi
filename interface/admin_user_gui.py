@@ -1,7 +1,13 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox, simpledialog, filedialog
 import sqlite3
 import hashlib
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'modules')))
+from log_manager import LogWatcher
+
+log_watcher = LogWatcher()
 
 class AdminUserGUI:
     def __init__(self, root, username, cursor):  # Kullanıcı adını ekliyoruz
@@ -9,6 +15,9 @@ class AdminUserGUI:
         self.root.title("Sistem Yöneticisi Paneli")
         self.root.geometry("600x400")
         self.root.configure(bg='lightblue')
+
+        # Log dosyalarının kaydedileceği dizin
+        self.log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'modules', 'logs')
 
         # Veritabanı Bağlantısı
         self.cursor = cursor
@@ -42,7 +51,11 @@ class AdminUserGUI:
         btn_access_documents = tk.Button(self.root, text="Dokümanlara Erişim", command=self.access_documents, bg='red', fg='white')
         btn_access_documents.pack(pady=10)
 
-        #Çıkış butonu
+        # Parola şifrelemesini gösterme butonu
+        btn_view_passwords = tk.Button(self.root, text="Parolaları Görüntüle", command=self.view_passwords, bg='green', fg='white')
+        btn_view_passwords.pack(pady=10)
+
+        # Çıkış butonu
         tk.Button(self.root, text="Çıkış Yap", command=self.logout, bg='red', fg='white').pack(pady=10)
 
     def manage_users(self):
@@ -94,8 +107,6 @@ class AdminUserGUI:
         # Yenile butonu
         tk.Button(manage_users_window, text="Yenile", command=refresh_list, bg='blue', fg='white').pack(pady=10)
 
-
-
     def approve_password_change(self):
         approval_window = tk.Toplevel(self.root)
         approval_window.title("Parola Değiştirme Talepleri")
@@ -103,7 +114,7 @@ class AdminUserGUI:
         approval_window.configure(bg='lightblue')
 
         # Talepleri getir
-        self.cursor.execute("SELECT id, username FROM password_change_requests WHERE approved IS NULL")
+        self.cursor.execute("SELECT id, username FROM password_change_requests WHERE approved IS 0")
         requests = self.cursor.fetchall()
 
         if not requests:
@@ -133,6 +144,7 @@ class AdminUserGUI:
 
                 messagebox.showinfo("Başarılı", f"{username} kullanıcısının yeni parolası onaylandı.")
                 listbox.delete(selection[0])
+                log_watcher.log_password_change_approval('PASSCHANGE001', 'SUCCESS', username)
             else:
                 messagebox.showerror("Hata", "Lütfen bir talep seçin.")
 
@@ -167,44 +179,112 @@ class AdminUserGUI:
                 if new_limit:
                     self.cursor.execute("UPDATE users SET storage_limit = ? WHERE username = ?", (new_limit, selected_user))
                     self.cursor.connection.commit()
-                    messagebox.showinfo("Başarılı", f"{selected_user} için depolama limiti başarıyla {new_limit} GB olarak güncellendi.")
+                    messagebox.showinfo("Başarılı", f"{selected_user} için depolama limiti başarıyla güncellendi.")
+                    listbox.delete(selection[0])
+                    listbox.insert(tk.END, f"Username: {selected_user}, Depolama Limiti: {new_limit} GB")
                 else:
                     messagebox.showerror("Hata", "Geçersiz giriş.")
             else:
                 messagebox.showerror("Hata", "Lütfen bir kullanıcı seçin.")
 
-        tk.Button(storage_window, text="Seçili Kullanıcıyı Güncelle", command=update_storage_limit, bg='green', fg='white').pack(pady=10)
+        tk.Button(storage_window, text="Depolama Limiti Güncelle", command=update_storage_limit, bg='green', fg='white').pack(pady=10)
 
     def view_logs(self):
-        # Kullanıcı loglarını görüntüleme
-        self.cursor.execute("SELECT * FROM logs")
-        logs = self.cursor.fetchall()
-        logs_list = "\n".join([f"Log ID: {log[0]}, Username: {log[1]}, Action: {log[2]}, Date: {log[3]}" for log in logs])
+        try:
+            # 'logs' dizinindeki tüm log dosyalarını al
+            log_files = [f for f in os.listdir(self.log_dir) if f.endswith('.txt')]  # Sadece .txt dosyalarını al
 
-        messagebox.showinfo("Kullanıcı Logları", f"Kullanıcı Logları:\n{logs_list}")
+            if log_files:
+                # Log dosyalarının adlarını listele
+                log_files_list = "\n".join(log_files)
+                messagebox.showinfo("Log Dosyaları", f"Aşağıdaki log dosyalarını indirilebilir:\n{log_files_list}")
+                
+                # Kullanıcının bir log dosyasını seçmesini sağla
+                selected_file = filedialog.askopenfilename(
+                    initialdir=self.log_dir,
+                    title="Log Dosyası Seçin",
+                    filetypes=(("Text files", "*.txt"), ("All files", "*.*"))
+                )
+                
+                if selected_file:
+                    # Seçilen dosyanın içeriğini oku
+                    with open(selected_file, 'r') as file:
+                        log_content = file.read()
+                    
+                    # Dosya içeriğini göster
+                    messagebox.showinfo("Log Dosyası İçeriği", log_content)
+            else:
+                messagebox.showinfo("Kullanıcı Logları", "Hiçbir log kaydı bulunmamaktadır.")
+        except Exception as e:
+            messagebox.showerror("Hata", f"Bir hata oluştu: {e}")
 
     def access_documents(self):
-        # Dokümanlara erişim
-        username = simpledialog.askstring("Doküman Erişimi", "Erişmek istediğiniz kullanıcının kullanıcı adını girin:")
-        
-        self.cursor.execute("SELECT * FROM documents WHERE username = ?", (username,))
+        # Kullanıcı dokümanlarına erişim
+        document_window = tk.Toplevel(self.root)
+        document_window.title("Kullanıcı Dokümanlarına Erişim")
+        document_window.geometry("600x400")
+        document_window.configure(bg='lightblue')
+
+        # Kullanıcılara ait dokümanları file_shares tablosundan al
+        self.cursor.execute("""
+            SELECT file_name, file_path, shared_by, shared_with, share_date, team_name, editable 
+            FROM file_shares
+        """)
         documents = self.cursor.fetchall()
-        
-        if documents:
-            docs_list = "\n".join([f"Document: {doc[1]}, Type: {doc[2]}" for doc in documents])
-            messagebox.showinfo("Dokümanlar", f"{username} kullanıcısının dokümanları:\n{docs_list}")
-        else:
-            messagebox.showerror("Hata", f"{username} kullanıcısının dokümanı bulunamadı.")
+
+        # Listeleme alanı
+        tk.Label(document_window, text="Kullanıcı Dokümanları:", bg='lightblue', font=('Arial', 12)).pack(pady=10)
+        listbox = tk.Listbox(document_window, width=60, height=15)
+        listbox.pack(pady=10)
+
+        # Dokümanları listeye ekleyelim
+        for document in documents:
+            file_name, file_path, shared_by, shared_with, share_date, team_name, editable = document
+            listbox.insert(tk.END, f"Dosya Adı: {file_name}, Takım: {team_name}, Paylaşan: {shared_by}, Paylaşılan: {shared_with}, Tarih: {share_date}, Düzenlenebilir: {editable}")
+
+        # Dosyayı açma butonu
+        def open_document():
+            selection = listbox.curselection()
+            if selection:
+                selected_file = documents[selection[0]][1]  # Dosya yolunu al
+                if os.path.exists(selected_file):
+                    os.system(f"start {selected_file}")  # Dosyayı aç
+                else:
+                    messagebox.showerror("Hata", "Dosya bulunamadı.")
+            else:
+                messagebox.showerror("Hata", "Lütfen bir dosya seçin.")
+
+        # Dosya açma butonu
+        tk.Button(document_window, text="Dosyayı Aç", command=open_document, bg='green', fg='white').pack(pady=10)
+
+
+    def view_passwords(self):
+        # Parolaları şifreli olarak görüntüleme
+        password_window = tk.Toplevel(self.root)
+        password_window.title("Parolaları Görüntüle")
+        password_window.geometry("600x400")
+        password_window.configure(bg='lightblue')
+
+        self.cursor.execute("SELECT username, password FROM users")
+        users = self.cursor.fetchall()
+
+        listbox = tk.Listbox(password_window, width=60, height=10)
+        listbox.pack(pady=10)
+
+        for user in users:
+            listbox.insert(tk.END, f"Username: {user[0]}, Parola: {user[1]}")
+
+        # Parolaları gizleme seçeneği
+        def toggle_passwords():
+            current_text = listbox.get(0, tk.END)
+            listbox.delete(0, tk.END)
+            for user in users:
+                listbox.insert(tk.END, f"Username: {user[0]}, Parola: {user[1]}")
+
+        tk.Button(password_window, text="Parolaları Gizle", command=toggle_passwords, bg='green', fg='white').pack(pady=10)
 
     def logout(self):
-        """Kullanıcı çıkış yaparsa, giriş ekranına döner."""
-        if messagebox.askyesno("Çıkış", "Çıkış yapmak istediğinizden emin misiniz?"):
-            self.root.destroy()  # Kullanıcı panelini kapat
-            self.return_to_main_screen()  # Giriş ekranına dön
+        # Çıkış yapma
+        self.root.quit()
 
-    def return_to_main_screen(self):
-        """Ana ekranı (giriş ekranı) yeniden başlatır."""
-        from main_gui import MainApp  # Ana ekran sınıfını içe aktar
-        main_root = tk.Tk()
-        app = MainApp(main_root)
-        main_root.mainloop()
+# Anlamlı ve kullanışlı admin pencereleriyle birlikte kullanıcıları etkili bir şekilde yönetebilirsiniz.

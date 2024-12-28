@@ -4,6 +4,11 @@ import sqlite3
 import hashlib
 from individual_user_gui import IndividualUserGUI
 from admin_user_gui import AdminUserGUI
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'modules')))
+from backup_sync import FileBackupApp
+
 
 class MainApp:
     def __init__(self, root):
@@ -18,6 +23,22 @@ class MainApp:
 
         # Giriş Ekranı
         self.create_login_screen()
+
+        # Yedekleme ve Senkronizasyonu başlatıyoruz
+        self.start_backup_sync()
+
+    def start_backup_sync(self):
+        """Yedekleme ve senkronizasyon işlemini başlatır."""
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        source_dir = os.path.join(project_root, "modules/source")
+        backup_dir = os.path.join(project_root, "modules/backup")
+
+        # Yedekleme işlemini GUI başlangıcında başlat
+        file_sync = FileBackupApp(self.root, source_dir, backup_dir)
+
+        # Kullanıcıya bildirim mesajı
+        print("Yedekleme ve Senkronizasyon Başarıyla Başlatıldı!")
+
 
     def create_login_screen(self):
         """Kullanıcı girişi için ekranı oluşturur."""

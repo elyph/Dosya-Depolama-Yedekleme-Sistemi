@@ -6,6 +6,12 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from tkinter import ttk
 from tkinter import Tk, Label, Button
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'modules')))
+from log_manager import LogWatcher
+
+log_watcher = LogWatcher()
 
 # Dosya izleme işlemi için event handler
 class FileChangeHandler(FileSystemEventHandler):
@@ -35,18 +41,35 @@ class FileChangeHandler(FileSystemEventHandler):
         self.progress_bar['value'] = 0
         files = os.listdir(self.source_dir)
         total_files = len(files)
+
+        # Kaynak dizindeki dosyaların listesi
+        source_files = set(files)
         
+        # Yedekleme dizinindeki dosyaların listesi
+        backup_files = set(os.listdir(self.backup_dir))
+
+        # Yedekleme dizininde olmayan dosyaları kopyala
         for idx, file in enumerate(files):
             src_path = os.path.join(self.source_dir, file)
             dest_path = os.path.join(self.backup_dir, file)
-            
-            if os.path.isfile(src_path):
-                shutil.copy(src_path, dest_path)
-                time.sleep(0.1)  # Yedekleme süresi
-                self.progress_bar['value'] = ((idx + 1) / total_files) * 100
-                time.sleep(0.1)  # Geriye doğru işlem yapılmasını engellemek için
 
+            if os.path.isfile(src_path) and file not in backup_files:
+                shutil.copy(src_path, dest_path)
+                print(f"Yedeklenen dosya: {file}")
+            self.progress_bar['value'] = ((idx + 1) / total_files) * 100
+            time.sleep(0.1)
+
+        # Yedekleme dizininde olup da kaynak dizinde olmayan dosyaları sil
+        for file in backup_files:
+            if file not in source_files:
+                file_path = os.path.join(self.backup_dir, file)
+                os.remove(file_path)
+                print(f"Silinen dosya: {file}")
+        
         print("Yedekleme tamamlandı!")
+        
+        # Yedekleme tamamlandıktan sonra log kaydı yapılır
+        log_watcher.log_backup("SUCCESS", "Backup operation completed successfully.")
 
 # Yedekleme işlemi için ana sınıf
 class FileBackupApp:

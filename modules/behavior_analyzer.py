@@ -1,7 +1,61 @@
-def analyze_user_behavior(user_logs):
-    failed_logins = [log for log in user_logs if 'failed login' in log]
+import time
+import threading
+import datetime
 
-    if len(failed_logins) > 3:
-        return "Anormal giriş davranışı tespit edildi."
+class UserBehaviorWatcher:
+    def __init__(self, log_file, alert_callback):
+        self.log_file = log_file
+        self.alert_callback = alert_callback  # Uyarı callback fonksiyonu
+        self.failed_login_attempts = {}  # Kullanıcı bazında başarısız giriş denemeleri
+        self.password_change_requests = {}  # Kullanıcı bazında parola değiştirme talepleri
 
-    return "Davranış normal."
+    def read_log_file(self):
+        """Log dosyasını satır satır oku."""
+        with open(self.log_file, "r") as log:
+            while True:
+                line = log.readline()
+                if not line:
+                    time.sleep(1)
+                    continue
+                self.process_log_line(line)
+
+    def process_log_line(self, line):
+        """Log satırında anormal davranışları kontrol et."""
+        if "failed login" in line:
+            self.handle_failed_login(line)
+        elif "password change" in line:
+            self.handle_password_change(line)
+
+    def handle_failed_login(self, line):
+        """Başarısız giriş denemelerini takip et."""
+        user = self.extract_user_from_line(line)
+        if user:
+            if user not in self.failed_login_attempts:
+                self.failed_login_attempts[user] = 0
+            self.failed_login_attempts[user] += 1
+            if self.failed_login_attempts[user] >= 3:  # 3 başarısız giriş
+                self.alert_callback(f"Anormal Davranış: Kullanıcı {user} 3'ten fazla başarısız giriş yaptı.")
+
+    def handle_password_change(self, line):
+        """Kullanıcının parola değiştirme taleplerini takip et."""
+        user = self.extract_user_from_line(line)
+        if user:
+            current_time = datetime.datetime.now()
+            if user not in self.password_change_requests:
+                self.password_change_requests[user] = []
+            self.password_change_requests[user].append(current_time)
+            self.password_change_requests[user] = [
+                time for time in self.password_change_requests[user] if (current_time - time).seconds < 3600
+            ]
+            if len(self.password_change_requests[user]) >= 3:  # Aynı kullanıcı 1 saat içinde 3 parola değiştirirse
+                self.alert_callback(f"Anormal Davranış: Kullanıcı {user} 1 saat içinde 3 kez parola değiştirdi.")
+
+    def extract_user_from_line(self, line):
+        """Log satırından kullanıcı bilgilerini çıkar."""
+        if "user=" in line:
+            return line.split("user=")[1].split()[0]
+        return None
+
+    def start(self):
+        """Log dosyasını izlemeye başla."""
+        threading.Thread(target=self.read_log_file, daemon=True).start()

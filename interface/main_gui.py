@@ -19,7 +19,7 @@ class MainApp:
         self.root = root
         self.root.title("Dosya Depolama/Yedekleme Sistemi")
         self.root.geometry("600x400")
-        self.root.configure(bg='lightblue')  # Arka plan rengi 
+        self.root.configure(bg='lightpink')  # Arka plan rengi 
 
         self.failed_attempts = 0  # Başarısız giriş sayısı
 
@@ -75,20 +75,20 @@ class MainApp:
     def create_login_screen(self):
         """Kullanıcı girişi için ekranı oluşturur."""
         # Kullanıcı Adı
-        tk.Label(self.root, text="Kullanıcı Adı:", bg='lightblue', font=('Arial', 12)).pack(pady=5)
+        tk.Label(self.root, text="Kullanıcı Adı:", bg='lightpink', font=('Arial', 12)).pack(pady=5)
         self.entry_username = tk.Entry(self.root, bg='white', fg='black')
         self.entry_username.pack(pady=5)
 
         # Parola
-        tk.Label(self.root, text="Parola:", bg='lightblue', font=('Arial', 12)).pack(pady=5)
+        tk.Label(self.root, text="Parola:", bg='lightpink', font=('Arial', 12)).pack(pady=5)
         self.entry_password = tk.Entry(self.root, show="*", bg='white', fg='black')
         self.entry_password.pack(pady=5)
 
         # Giriş Yap Butonu
-        tk.Button(self.root, text="Giriş Yap", command=self.login, bg='blue', fg='white').pack(pady=10)
+        tk.Button(self.root, text="Giriş Yap", command=self.login, bg='gray', fg='white').pack(pady=10)
 
         # Kayıt Ol Butonu
-        tk.Button(self.root, text="Kayıt Ol", command=self.register, bg='green', fg='white').pack(pady=10)
+        tk.Button(self.root, text="Kayıt Ol", command=self.register, bg='gray', fg='white').pack(pady=10)
 
         # Çıkış Yap Butonu (Uygulamayı kapatır)
         tk.Button(self.root, text="Çıkış Yap", command=self.exit_application, bg='red', fg='white').pack(pady=10)

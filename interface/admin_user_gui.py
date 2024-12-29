@@ -114,7 +114,7 @@ class AdminUserGUI:
         approval_window.configure(bg='lightpink')
 
         # Talepleri getir
-        self.cursor.execute("SELECT id, username FROM password_change_requests WHERE approved IS 0")
+        self.cursor.execute("SELECT id, username FROM password_change_requests WHERE approved = 0")
         requests = self.cursor.fetchall()
 
         if not requests:
@@ -148,7 +148,26 @@ class AdminUserGUI:
             else:
                 messagebox.showerror("Hata", "Lütfen bir talep seçin.")
 
+        def reject_request():
+            selection = listbox.curselection()
+            if selection:
+                request_id = requests[selection[0]][0]
+                username = requests[selection[0]][1]
+
+                # Onaylamama işlemi
+                self.cursor.execute("UPDATE password_change_requests SET approved = 2 WHERE id = ?", (request_id,))
+                self.cursor.connection.commit()
+
+                messagebox.showinfo("Başarılı", f"{username} kullanıcısının parola değiştirme talebi reddedildi.")
+                listbox.delete(selection[0])
+                log_watcher.log_password_change_approval('PASSCHANGE001', 'REJECTED', username)
+            else:
+                messagebox.showerror("Hata", "Lütfen bir talep seçin.")
+
+        # Onayla ve Reddet butonları
         tk.Button(approval_window, text="Seçili Talebi Onayla", command=approve_request, bg='gray', fg='white').pack(pady=10)
+        tk.Button(approval_window, text="Seçili Talebi Reddet", command=reject_request, bg='red', fg='white').pack(pady=10)
+
 
     def manage_storage(self):
         # Depolama limitlerini yönetme

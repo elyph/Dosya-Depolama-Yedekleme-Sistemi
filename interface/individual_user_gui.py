@@ -7,6 +7,7 @@ import os
 import time
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'modules')))
+from notifications import NotificationManager, UserNotificationsApp
 from log_manager import LogWatcher
 
 log_watcher = LogWatcher()
@@ -19,13 +20,14 @@ class IndividualUserGUI:
         self.conn = conn  # Veritabanı bağlantısı
         self.root.title(f"{self.username} - Bireysel Kullanıcı Paneli")
         self.root.geometry("600x600")
-        self.root.configure(bg='lightblue')
-        self.lbl_welcome = tk.Label(self.root, text=f"Hoş Geldiniz, {self.username}!", bg='lightblue', font=('Arial', 16))
+        self.root.configure(bg='lightpink')
+        self.lbl_welcome = tk.Label(self.root, text=f"Hoş Geldiniz, {self.username}!", bg='lightpink', font=('Arial', 16))
         self.lbl_welcome.pack(pady=10)
-        self.status_label = tk.Label(self.root, text=" ", bg='lightblue', font=("Arial", 12))
+        self.status_label = tk.Label(self.root, text=" ", bg='lightpink', font=("Arial", 12))
         self.status_label.pack(pady=10)
-        self.create_widgets()
         self.password_change_requests = []  # Parola değişikliği taleplerini saklamak için liste
+        self.notification_manager = NotificationManager(db_connection=self.conn)  # Bildirim yöneticisi
+        self.create_widgets()
 
     def create_widgets(self):
         # Kullanıcı adı değiştirme butonu
@@ -65,6 +67,9 @@ class IndividualUserGUI:
 
         #Çıkış butonu
         tk.Button(self.root, text="Çıkış Yap", command=self.logout, bg='red', fg='white').pack(pady=10)
+
+        self.show_notifications_button = tk.Button(self.root, text="Bildirimleri Göster", command=self.show_notifications)
+        self.show_notifications_button.pack(pady=10)
 
     def change_username(self):
         new_username = simpledialog.askstring("Yeni Kullanıcı Adı", "Yeni kullanıcı adınızı girin:")
@@ -214,7 +219,7 @@ class IndividualUserGUI:
             personal_files_window, text="Kapat", command=personal_files_window.destroy, bg='red', fg='white'
         ).pack(pady=5)
 
-    def create_team(self):
+    def create_team(self): 
         team_name = simpledialog.askstring("Takım Oluştur", "Takım adını girin:")
         if not team_name:
             return
@@ -223,6 +228,9 @@ class IndividualUserGUI:
         self.cursor.execute("INSERT INTO teams (owner_username, team_name) VALUES (?, ?)", 
                             (self.username, team_name))
         self.conn.commit()
+
+        # Bildirim gönder: Takım oluşturuldu
+        self.notification_manager.add_notification("Yeni Takım Oluşturuldu", self.username)
 
         users_window = tk.Toplevel(self.root)
         users_window.title("Takım Üyesi Seç")
@@ -249,21 +257,24 @@ class IndividualUserGUI:
                 if self.cursor.fetchone():
                     messagebox.showerror("Hata", f"{selected_member} zaten bu takımda yer alıyor!")
                     return
-                
+
                 try:
                     # Veritabanına ekle
                     self.cursor.execute("INSERT INTO team_members (team_name, member_username, owner_username) VALUES (?, ?, ?)",
                                         (team_name, selected_member, self.username))
                     self.conn.commit()
-                    messagebox.showinfo("Başarılı", f"{selected_member} başarıyla eklendi.")
 
-                    # Takım üyesi atama işlemi loglanıyor
-                    log_watcher.log_team_member_assignment(self.username, selected_member, "SUCCESS")
-                    
+                    # Yeni eklenen üyeye bildirim gönder
+                    self.notification_manager.add_notification(
+                        f"{team_name} takımına başarıyla katıldınız.", selected_member
+                    )
+                    # Takım sahibine bildirim gönder
+                    self.notification_manager.add_notification(
+                        f"{selected_member} başarıyla {team_name} takımına eklendi.", self.username
+                    )
+                    messagebox.showinfo("Başarılı", f"{selected_member} başarıyla eklendi.")
                 except sqlite3.Error as e:
                     messagebox.showerror("Hata", f"Üye eklenirken bir hata oluştu: {e}")
-                    # Loglama işlemi (hata durumunda)
-                    log_watcher.log_team_member_assignment(self.username, selected_member, "FAILED")
             else:
                 messagebox.showerror("Hata", "Bir kullanıcı seçmelisiniz.")
 
@@ -353,9 +364,8 @@ class IndividualUserGUI:
                                     (team_name, selected_member))
                 if self.cursor.fetchone():
                     messagebox.showerror("Hata", f"{selected_member} zaten bu takımda yer alıyor!")
-                    log_watcher.log_team_member_assignment(self.username, selected_member, "Failure: Already in team")
                     return
-                
+
                 try:
                     # Veritabanına ekle
                     self.cursor.execute(
@@ -363,15 +373,24 @@ class IndividualUserGUI:
                         (team_name, selected_member, self.username)
                     )
                     self.conn.commit()
+
+                    self.cursor.execute("INSERT INTO team_members (team_name, member_username) VALUES (?, ?)", (team_name, selected_member))
+                    self.connection.commit()
+                    # Yeni eklenen üyeye bildirim gönder
+                    self.notification_manager.add_notification(
+                        f"{team_name} takımına başarıyla katıldınız.", selected_member
+                    )
+                    # Takım sahibine bildirim gönder
+                    self.notification_manager.add_notification(
+                        f"{selected_member} başarıyla {team_name} takımına eklendi.", self.username
+                    )
+
                     messagebox.showinfo("Başarılı", f"{selected_member} başarıyla eklendi.")
-                    log_watcher.log_team_member_assignment(self.username, selected_member, "Success")
                 except sqlite3.Error as e:
                     messagebox.showerror("Hata", f"Üye eklenirken bir hata oluştu: {e}")
-                    log_watcher.log_team_member_assignment(self.username, selected_member, f"Failure: {e}")
             else:
                 messagebox.showerror("Hata", "Bir kullanıcı seçmelisiniz.")
-                log_watcher.log_team_member_assignment(self.username, "None", "Failure: No user selected")
-
+        
         # Ekle butonu
         btn_add_member = tk.Button(users_window, text="Ekle", command=add_selected_member, bg='green', fg='white')
         btn_add_member.pack(pady=10)
@@ -379,6 +398,7 @@ class IndividualUserGUI:
         # Pencereyi kapatma butonu
         btn_close_window = tk.Button(users_window, text="Kapat", command=users_window.destroy, bg='red', fg='white')
         btn_close_window.pack(pady=5)
+
 
     def view_team_members(self, team_name):
         if not team_name:
@@ -441,15 +461,21 @@ class IndividualUserGUI:
             
             self.conn.commit()
 
-            # Paylaşım bilgisi kullanıcıya gösterilir
-            member_list = ", ".join([member[0] for member in members])
+            self.cursor.execute("SELECT member_username FROM team_members WHERE team_name = ?", (team_name,))
+            team_members = self.cursor.fetchall()
+
+            for member in team_members:
+                self.notification_manager.add_notification(
+                    f"{file_name} dosyası {team_name} takımında sizinle paylaşıldı.", member[0]
+                )
+
             messagebox.showinfo("Başarılı", f"{team_name} takımına ({member_list}) {file_name} başarıyla paylaşıldı!")
 
             # Dosya paylaşımını logla
             for member in members:
                 log_watcher.log_document_sharing(self.username, file_name, member[0], "Success")
         else:
-           log_watcher.log_document_sharing(self.username, "None", team_name, "Failure: No file selected")
+            log_watcher.log_document_sharing(self.username, "None", team_name, "Failure: No file selected")
 
 
     def view_shared_files(self):
@@ -538,15 +564,76 @@ class IndividualUserGUI:
                         f.write(new_content)
                     messagebox.showinfo("Başarılı", f"{file_name} dosyası başarıyla güncellendi.")
                     edit_window.destroy()
+
+                    # Dosya düzenlendiği için bildirim gönder
+                    self.cursor.execute("SELECT shared_with FROM file_shares WHERE file_name = ?", (file_name,))
+                    team_members = self.cursor.fetchall()
+
+                    for member in team_members:
+                        self.notification_manager.add_notification(
+                            f"{file_name} dosyasında {self.username} tarafından değişiklik yapıldı.", member[0]
+                        )
                 except Exception as e:
                     messagebox.showerror("Hata", f"Dosya kaydedilirken bir hata oluştu: {e}")
 
             tk.Button(edit_window, text="Değişiklikleri Kaydet", command=save_changes, bg='green', fg='white').pack(pady=10)
             tk.Button(edit_window, text="Kapat", command=edit_window.destroy, bg='red', fg='white').pack(pady=5)
 
+
         # Düzenleme butonu
         tk.Button(shared_files_window, text="Seçili Dosyayı Düzenle", command=edit_selected_file, bg='yellow', fg='black').pack(pady=10)
         tk.Button(shared_files_window, text="Kapat", command=shared_files_window.destroy, bg='red', fg='white').pack(pady=5)
+
+    def show_notifications(self):
+        """Bu fonksiyon, bildirim penceresini açar."""
+        # Kullanıcıya ait bildirimleri al
+        notifications = self.notification_manager.get_notifications(self.username)
+
+        if not notifications:
+            messagebox.showinfo("Bilgi", "Hiç bildiriminiz yok.")
+            return
+
+        # Yeni bir pencere açarak bildirimleri listeleyelim
+        notification_window = tk.Toplevel(self.root)
+        notification_window.title("Bildirimler")
+
+        tk.Label(notification_window, text="Bildirimleriniz:", font=("Arial", 14)).pack(pady=10)
+
+        notifications_listbox = tk.Listbox(notification_window)
+        notifications_listbox.pack(pady=5, padx=10, fill=tk.BOTH, expand=True)
+
+        for notification in notifications:
+            notifications_listbox.insert(
+                tk.END, f"{notification['id']}: {notification['message']} - ({notification['timestamp']})"
+            )
+
+        # Bildirim silme veya okundu olarak işaretleme butonları
+        def mark_as_read():
+            selected = notifications_listbox.curselection()
+            if not selected:
+                messagebox.showwarning("Uyarı", "Lütfen bir bildirim seçin.")
+                return
+            selected_text = notifications_listbox.get(selected[0])
+            notification_id = int(selected_text.split(":")[0])  # ID'yi çıkarıyoruz
+            self.notification_manager.mark_as_read(notification_id)
+            notifications_listbox.delete(selected[0])
+            messagebox.showinfo("Başarılı", "Bildirim okundu olarak işaretlendi.")
+
+        def delete_notification():
+            selected = notifications_listbox.curselection()
+            if not selected:
+                messagebox.showwarning("Uyarı", "Lütfen bir bildirim seçin.")
+                return
+            selected_text = notifications_listbox.get(selected[0])
+            notification_id = int(selected_text.split(":")[0])  # ID'yi çıkarıyoruz
+            self.notification_manager.remove_notification(notification_id)
+            notifications_listbox.delete(selected[0])
+            messagebox.showinfo("Başarılı", "Bildirim silindi.")
+
+        tk.Button(notification_window, text="Okundu Olarak İşaretle", command=mark_as_read).pack(pady=5)
+        tk.Button(notification_window, text="Sil", command=delete_notification).pack(pady=5)
+        tk.Button(notification_window, text="Kapat", command=notification_window.destroy).pack(pady=5)
+
 
     def logout(self):
         """Kullanıcı çıkış yaparsa, giriş ekranına döner."""

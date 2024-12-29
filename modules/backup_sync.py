@@ -84,7 +84,7 @@ class FileBackupApp:
 
     def start_backup_sync(self):
         # UI elemanları
-        label = Label(self.root, text="Yedekleme İlerleme", font=("Arial", 14))
+        label = Label(self.root, text="Yedekleme İlerleme", font=("Arial", 14), bg='lightpink')
         label.pack(pady=10)
 
         self.progress_bar = ttk.Progressbar(self.root, orient="horizontal", length=300, mode="determinate")

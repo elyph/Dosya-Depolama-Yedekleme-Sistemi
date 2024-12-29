@@ -31,45 +31,46 @@ class IndividualUserGUI:
 
     def create_widgets(self):
         # Kullanıcı adı değiştirme butonu
-        btn_change_username = tk.Button(self.root, text="Kullanıcı Adı Değiştir", command=self.change_username, bg='yellow', fg='black', width=30)
+        btn_change_username = tk.Button(self.root, text="Kullanıcı Adı Değiştir", command=self.change_username, bg='gray', fg='white', width=30)
         btn_change_username.pack(pady=10)
 
         # Parola değiştirme talebi gönderme butonu
-        btn_request_password_change = tk.Button(self.root, text="Parola Değiştirme Talebi", command=self.request_password_change, bg='orange', fg='black', width=30)
+        btn_request_password_change = tk.Button(self.root, text="Parola Değiştirme Talebi", command=self.request_password_change, bg='gray', fg='white', width=30)
         btn_request_password_change.pack(pady=10)
 
         # Parola değişikliği kontrol etme butonu
-        btn_check_status = tk.Button(self.root, text="Parola Değişikliği Durumu", command=self.check_request_status, bg='orange', fg='black', width=30)
+        btn_check_status = tk.Button(self.root, text="Parola Değişikliği Durumu", command=self.check_request_status, bg='gray', fg='white', width=30)
         btn_check_status.pack(pady=10)
 
         #Dosya yükleme butonu
-        btn_upload = tk.Button(self.root, text="Dosya Yükle", command=self.upload_file, bg='blue', fg='white', width=30)
+        btn_upload = tk.Button(self.root, text="Dosya Yükle", command=self.upload_file, bg='gray', fg='white', width=30)
         btn_upload.pack(pady=10)
 
         #Kişisel dosyaları görüntükeme butonu
-        tk.Button(self.root, text="Kişisel Dosyalarım", command=self.view_personal_files, bg='blue', fg='white', width=30).pack(pady=10)
+        tk.Button(self.root, text="Kişisel Dosyalarım", command=self.view_personal_files, bg='gray', fg='white', width=30).pack(pady=10)
 
         # Takım üyesi belirleme butonu
-        btn_add_team_member = tk.Button(self.root, text="Takım Oluştur", command=self.create_team, bg='green', fg='white', width=30)
+        btn_add_team_member = tk.Button(self.root, text="Takım Oluştur", command=self.create_team, bg='gray', fg='white', width=30)
         btn_add_team_member.pack(pady=10)
 
         # Kullanıcının içinde olduğu takımları görüntüleme butonu
-        btn_view_user_teams = tk.Button(self.root, text="Takımlarım", command=self.view_user_teams, bg='cyan', fg='black', width=30)
+        btn_view_user_teams = tk.Button(self.root, text="Takımlarım", command=self.view_user_teams, bg='gray', fg='white', width=30)
         btn_view_user_teams.pack(pady=10)
 
         # Dosya paylaşma butonu
-        btn_share_file = tk.Button(self.root, text="Dosya Paylaş", command=self.share_file, bg='purple', fg='white', width=30)
+        btn_share_file = tk.Button(self.root, text="Dosya Paylaş", command=self.share_file, bg='gray', fg='white', width=30)
         btn_share_file.pack(pady=10)
 
         # Dosya görüntüleme butonu
-        btn_view_shared_files = tk.Button(self.root, text="Dosyaları Görüntüle", command=self.view_shared_files, bg='pink', fg='white', width=30)
+        btn_view_shared_files = tk.Button(self.root, text="Dosyaları Görüntüle", command=self.view_shared_files, bg='gray', fg='white', width=30)
         btn_view_shared_files.pack(pady=10)
+
+        #Bildirimleri göster butonu
+        self.show_notifications_button = tk.Button(self.root, text="Bildirimleri Göster", bg='gray', fg='white', width=30, command=self.show_notifications)
+        self.show_notifications_button.pack(pady=10)
 
         #Çıkış butonu
         tk.Button(self.root, text="Çıkış Yap", command=self.logout, bg='red', fg='white').pack(pady=10)
-
-        self.show_notifications_button = tk.Button(self.root, text="Bildirimleri Göster", command=self.show_notifications)
-        self.show_notifications_button.pack(pady=10)
 
     def change_username(self):
         new_username = simpledialog.askstring("Yeni Kullanıcı Adı", "Yeni kullanıcı adınızı girin:")
@@ -211,7 +212,7 @@ class IndividualUserGUI:
             messagebox.showinfo("İndir", f"{selected_file[0]} dosyası şu dizine kaydedildi: {selected_file[1]}")
 
         tk.Button(
-            personal_files_window, text="Seçili Dosyayı İndir", command=download_selected_file, bg='green', fg='white'
+            personal_files_window, text="Seçili Dosyayı İndir", command=download_selected_file, bg='gray', fg='white'
         ).pack(pady=5)
 
         # Kapat butonu
@@ -279,7 +280,7 @@ class IndividualUserGUI:
                 messagebox.showerror("Hata", "Bir kullanıcı seçmelisiniz.")
 
         # Ekle butonu
-        btn_add_member = tk.Button(users_window, text="Ekle", command=add_selected_member, bg='green', fg='white')
+        btn_add_member = tk.Button(users_window, text="Ekle", command=add_selected_member, bg='gray', fg='white')
         btn_add_member.pack(pady=10)
 
         # Pencereyi kapatma butonu
@@ -324,7 +325,7 @@ class IndividualUserGUI:
             return False
 
         # Takım üyelerini görüntüle butonu
-        btn_view_team_members = tk.Button(teams_window, text="Takım Üyelerini Görüntüle", command=lambda: self.view_team_members(teams_listbox.get(tk.ACTIVE)), bg='green', fg='white')
+        btn_view_team_members = tk.Button(teams_window, text="Takım Üyelerini Görüntüle", command=lambda: self.view_team_members(teams_listbox.get(tk.ACTIVE)), bg='gray', fg='white')
         btn_view_team_members.pack(pady=10)
 
         # Takım üyesi ekleme butonu (Sadece takım sahibi görmeli)
@@ -335,7 +336,7 @@ class IndividualUserGUI:
             else:
                 messagebox.showerror("Yetki Hatası", "Bu takımın sahibi değilsiniz.")
 
-        btn_add_member = tk.Button(teams_window, text="Takım Üyesi Ekle", command=add_member_button_click, bg='blue', fg='white')
+        btn_add_member = tk.Button(teams_window, text="Takım Üyesi Ekle", command=add_member_button_click, bg='gray', fg='white')
         btn_add_member.pack(pady=10)
 
     def add_member_to_team(self, team_name):
@@ -392,7 +393,7 @@ class IndividualUserGUI:
                 messagebox.showerror("Hata", "Bir kullanıcı seçmelisiniz.")
         
         # Ekle butonu
-        btn_add_member = tk.Button(users_window, text="Ekle", command=add_selected_member, bg='green', fg='white')
+        btn_add_member = tk.Button(users_window, text="Ekle", command=add_selected_member, bg='gray', fg='white')
         btn_add_member.pack(pady=10)
 
         # Pencereyi kapatma butonu
@@ -526,7 +527,7 @@ class IndividualUserGUI:
                 except Exception as e:
                     messagebox.showerror("Hata", f"Dosya indirilirken bir hata oluştu: {e}")
 
-        btn_download = tk.Button(shared_files_window, text="İndir", command=download_file, bg='green', fg='white')
+        btn_download = tk.Button(shared_files_window, text="İndir", command=download_file, bg='gray', fg='white')
         btn_download.pack(pady=5)
 
         def edit_selected_file():
@@ -576,12 +577,12 @@ class IndividualUserGUI:
                 except Exception as e:
                     messagebox.showerror("Hata", f"Dosya kaydedilirken bir hata oluştu: {e}")
 
-            tk.Button(edit_window, text="Değişiklikleri Kaydet", command=save_changes, bg='green', fg='white').pack(pady=10)
+            tk.Button(edit_window, text="Değişiklikleri Kaydet", command=save_changes, bg='gray', fg='white').pack(pady=10)
             tk.Button(edit_window, text="Kapat", command=edit_window.destroy, bg='red', fg='white').pack(pady=5)
 
 
         # Düzenleme butonu
-        tk.Button(shared_files_window, text="Seçili Dosyayı Düzenle", command=edit_selected_file, bg='yellow', fg='black').pack(pady=10)
+        tk.Button(shared_files_window, text="Seçili Dosyayı Düzenle", command=edit_selected_file, bg='gray', fg='white').pack(pady=10)
         tk.Button(shared_files_window, text="Kapat", command=shared_files_window.destroy, bg='red', fg='white').pack(pady=5)
 
     def show_notifications(self):

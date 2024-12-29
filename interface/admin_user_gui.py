@@ -14,7 +14,7 @@ class AdminUserGUI:
         self.root = root
         self.root.title("Sistem Yöneticisi Paneli")
         self.root.geometry("600x400")
-        self.root.configure(bg='lightblue')
+        self.root.configure(bg='lightpink')
 
         # Log dosyalarının kaydedileceği dizin
         self.log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'modules', 'logs')
@@ -24,7 +24,7 @@ class AdminUserGUI:
         self.username = username  # Admin kullanıcı adı
 
         # Hoşgeldiniz mesajı
-        self.lbl_welcome = tk.Label(self.root, text=f"Hoşgeldiniz, {username}!", bg='lightblue', font=('Arial', 14, 'bold'))
+        self.lbl_welcome = tk.Label(self.root, text=f"Hoşgeldiniz, {username}!", bg='lightpink', font=('Arial', 14, 'bold'))
         self.lbl_welcome.pack(pady=20)
 
         # Yönetici arayüz bileşenlerini oluştur
@@ -32,27 +32,27 @@ class AdminUserGUI:
 
     def create_widgets(self):
         # Kullanıcı yönetimi butonu
-        btn_manage_users = tk.Button(self.root, text="Kullanıcı Yönetimi", command=self.manage_users, bg='yellow', fg='black')
+        btn_manage_users = tk.Button(self.root, text="Kullanıcı Yönetimi", command=self.manage_users, bg='gray', fg='white')
         btn_manage_users.pack(pady=10)
 
         # Parola değiştirme onayı butonu
-        btn_approve_password_change = tk.Button(self.root, text="Parola Değiştirme Onayı", command=self.approve_password_change, bg='orange', fg='black')
+        btn_approve_password_change = tk.Button(self.root, text="Parola Değiştirme Onayı", command=self.approve_password_change, bg='gray', fg='white')
         btn_approve_password_change.pack(pady=10)
 
         # Depolama limitleri yönetimi butonu
-        btn_manage_storage = tk.Button(self.root, text="Depolama Limitlerini Yönet", command=self.manage_storage, bg='blue', fg='white')
+        btn_manage_storage = tk.Button(self.root, text="Depolama Limitlerini Yönet", command=self.manage_storage, bg='gray', fg='white')
         btn_manage_storage.pack(pady=10)
 
         # Kullanıcı loglarını görüntüleme butonu
-        btn_view_logs = tk.Button(self.root, text="Kullanıcı Loglarını Görüntüle", command=self.view_logs, bg='purple', fg='white')
+        btn_view_logs = tk.Button(self.root, text="Kullanıcı Loglarını Görüntüle", command=self.view_logs, bg='gray', fg='white')
         btn_view_logs.pack(pady=10)
 
         # Dosya erişim butonu
-        btn_access_documents = tk.Button(self.root, text="Dokümanlara Erişim", command=self.access_documents, bg='red', fg='white')
+        btn_access_documents = tk.Button(self.root, text="Dokümanlara Erişim", command=self.access_documents, bg='gray', fg='white')
         btn_access_documents.pack(pady=10)
 
         # Parola şifrelemesini gösterme butonu
-        btn_view_passwords = tk.Button(self.root, text="Parolaları Görüntüle", command=self.view_passwords, bg='green', fg='white')
+        btn_view_passwords = tk.Button(self.root, text="Parolaları Görüntüle", command=self.view_passwords, bg='gray', fg='white')
         btn_view_passwords.pack(pady=10)
 
         # Çıkış butonu
@@ -63,9 +63,9 @@ class AdminUserGUI:
         manage_users_window = tk.Toplevel(self.root)
         manage_users_window.title("Kullanıcı Yönetimi")
         manage_users_window.geometry("600x400")
-        manage_users_window.configure(bg='lightblue')
+        manage_users_window.configure(bg='lightpink')
 
-        tk.Label(manage_users_window, text="Kullanıcı Profilleri:", bg='lightblue', font=('Arial', 12)).pack(pady=10)
+        tk.Label(manage_users_window, text="Kullanıcı Profilleri:", bg='lightpink', font=('Arial', 12)).pack(pady=10)
         listbox = tk.Listbox(manage_users_window, width=60, height=15)
         listbox.pack(pady=10)
 
@@ -102,16 +102,16 @@ class AdminUserGUI:
                 messagebox.showerror("Hata", "Lütfen bir kullanıcı seçin.")
 
         # Rol değiştirme butonu
-        tk.Button(manage_users_window, text="Seçili Kullanıcının Rolünü Değiştir", command=change_role, bg='green', fg='white').pack(pady=10)
+        tk.Button(manage_users_window, text="Seçili Kullanıcının Rolünü Değiştir", command=change_role, bg='gray', fg='white').pack(pady=10)
 
         # Yenile butonu
-        tk.Button(manage_users_window, text="Yenile", command=refresh_list, bg='blue', fg='white').pack(pady=10)
+        tk.Button(manage_users_window, text="Yenile", command=refresh_list, bg='red', fg='white').pack(pady=10)
 
     def approve_password_change(self):
         approval_window = tk.Toplevel(self.root)
         approval_window.title("Parola Değiştirme Talepleri")
         approval_window.geometry("600x400")
-        approval_window.configure(bg='lightblue')
+        approval_window.configure(bg='lightpink')
 
         # Talepleri getir
         self.cursor.execute("SELECT id, username FROM password_change_requests WHERE approved IS 0")
@@ -121,7 +121,7 @@ class AdminUserGUI:
             messagebox.showinfo("Bilgi", "Bekleyen bir parola değiştirme talebi yok.")
             return
 
-        tk.Label(approval_window, text="Bekleyen Talepler:", bg='lightblue', font=('Arial', 12)).pack(pady=10)
+        tk.Label(approval_window, text="Bekleyen Talepler:", bg='lightpink', font=('Arial', 12)).pack(pady=10)
         listbox = tk.Listbox(approval_window, width=50, height=10)
         listbox.pack(pady=10)
 
@@ -148,16 +148,16 @@ class AdminUserGUI:
             else:
                 messagebox.showerror("Hata", "Lütfen bir talep seçin.")
 
-        tk.Button(approval_window, text="Seçili Talebi Onayla", command=approve_request, bg='green', fg='white').pack(pady=10)
+        tk.Button(approval_window, text="Seçili Talebi Onayla", command=approve_request, bg='gray', fg='white').pack(pady=10)
 
     def manage_storage(self):
         # Depolama limitlerini yönetme
         storage_window = tk.Toplevel(self.root)
         storage_window.title("Depolama Limiti Yönetimi")
         storage_window.geometry("600x400")
-        storage_window.configure(bg='lightblue')
+        storage_window.configure(bg='lightpink')
 
-        tk.Label(storage_window, text="Depolama Limiti Yönetimi", bg='lightblue', font=('Arial', 14, 'bold')).pack(pady=20)
+        tk.Label(storage_window, text="Depolama Limiti Yönetimi", bg='lightpink', font=('Arial', 14, 'bold')).pack(pady=20)
 
         self.cursor.execute("SELECT username, storage_limit FROM users")
         users = self.cursor.fetchall()
@@ -187,7 +187,7 @@ class AdminUserGUI:
             else:
                 messagebox.showerror("Hata", "Lütfen bir kullanıcı seçin.")
 
-        tk.Button(storage_window, text="Depolama Limiti Güncelle", command=update_storage_limit, bg='green', fg='white').pack(pady=10)
+        tk.Button(storage_window, text="Depolama Limiti Güncelle", command=update_storage_limit, bg='gray', fg='white').pack(pady=10)
 
     def view_logs(self):
         try:
@@ -223,7 +223,7 @@ class AdminUserGUI:
         document_window = tk.Toplevel(self.root)
         document_window.title("Kullanıcı Dokümanlarına Erişim")
         document_window.geometry("600x400")
-        document_window.configure(bg='lightblue')
+        document_window.configure(bg='lightpink')
 
         # Kullanıcılara ait dokümanları file_shares tablosundan al
         self.cursor.execute("""
@@ -233,7 +233,7 @@ class AdminUserGUI:
         documents = self.cursor.fetchall()
 
         # Listeleme alanı
-        tk.Label(document_window, text="Kullanıcı Dokümanları:", bg='lightblue', font=('Arial', 12)).pack(pady=10)
+        tk.Label(document_window, text="Kullanıcı Dokümanları:", bg='lightpink', font=('Arial', 12)).pack(pady=10)
         listbox = tk.Listbox(document_window, width=60, height=15)
         listbox.pack(pady=10)
 
@@ -255,7 +255,7 @@ class AdminUserGUI:
                 messagebox.showerror("Hata", "Lütfen bir dosya seçin.")
 
         # Dosya açma butonu
-        tk.Button(document_window, text="Dosyayı Aç", command=open_document, bg='green', fg='white').pack(pady=10)
+        tk.Button(document_window, text="Dosyayı Aç", command=open_document, bg='gray', fg='white').pack(pady=10)
 
 
     def view_passwords(self):
@@ -263,7 +263,7 @@ class AdminUserGUI:
         password_window = tk.Toplevel(self.root)
         password_window.title("Parolaları Görüntüle")
         password_window.geometry("600x400")
-        password_window.configure(bg='lightblue')
+        password_window.configure(bg='lightpink')
 
         self.cursor.execute("SELECT username, password FROM users")
         users = self.cursor.fetchall()
@@ -281,10 +281,17 @@ class AdminUserGUI:
             for user in users:
                 listbox.insert(tk.END, f"Username: {user[0]}, Parola: {user[1]}")
 
-        tk.Button(password_window, text="Parolaları Gizle", command=toggle_passwords, bg='green', fg='white').pack(pady=10)
+        tk.Button(password_window, text="Parolaları Gizle", command=toggle_passwords, bg='gray', fg='white').pack(pady=10)
 
     def logout(self):
-        # Çıkış yapma
-        self.root.quit()
+        """Kullanıcı çıkış yaparsa, giriş ekranına döner."""
+        if messagebox.askyesno("Çıkış", "Çıkış yapmak istediğinizden emin misiniz?"):
+            self.root.destroy()  # Kullanıcı panelini kapat
+            self.return_to_main_screen()  # Giriş ekranına dön
 
-# Anlamlı ve kullanışlı admin pencereleriyle birlikte kullanıcıları etkili bir şekilde yönetebilirsiniz.
+    def return_to_main_screen(self):
+        """Ana ekranı (giriş ekranı) yeniden başlatır."""
+        from main_gui import MainApp  # Ana ekran sınıfını içe aktar
+        main_root = tk.Tk()
+        app = MainApp(main_root)
+        main_root.mainloop()

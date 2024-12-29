@@ -134,11 +134,11 @@ class IndividualUserGUI:
         result = self.cursor.fetchone()
         if result is None:
             self.status_label.config(text="Herhangi bir talebiniz bulunmamaktadır.", fg='blue')
-        elif result[0] is None:
+        elif result[0] == 0:
             self.status_label.config(text="Talebiniz onay bekliyor.", fg='orange')
         elif result[0] == 1:
             self.status_label.config(text="Talebiniz onaylanmıştır.", fg='green')
-        elif result[0] == 0:
+        elif result[0] == 2:
             self.status_label.config(text="Talebiniz reddedilmiştir.", fg='red')
         else:
             self.status_label.config(text="Bilinmeyen bir durum oluştu.", fg='gray')
@@ -469,8 +469,6 @@ class IndividualUserGUI:
                 self.notification_manager.add_notification(
                     f"{file_name} dosyası {team_name} takımında sizinle paylaşıldı.", member[0]
                 )
-
-            messagebox.showinfo("Başarılı", f"{team_name} takımına ({member_list}) {file_name} başarıyla paylaşıldı!")
 
             # Dosya paylaşımını logla
             for member in members:
